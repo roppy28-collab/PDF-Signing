@@ -3,18 +3,17 @@ import {
   Upload,
   Sparkles,
   Sliders,
-  Eye,
   Trash2,
   Plus,
   RefreshCw,
   Info,
-  BookmarkCheck,
   CheckCircle2,
-  Undo2
+  Undo2,
+  BookmarkCheck,
 } from 'lucide-react';
-import { SignatureSettings } from '../types';
+import { SavedSignatureData, SignatureSettings } from '../types';
 import { ProcessedSignature } from '../utils/imageProcessor';
-import { createSampleSignatureJpg } from '../utils/sampleSignature';
+import { SignatureGallery } from './SignatureGallery';
 
 interface SignaturePanelProps {
   rawImageSource: string | null;
@@ -25,6 +24,15 @@ interface SignaturePanelProps {
   onAddSignatureToPage: () => void;
   hasPdfLoaded: boolean;
   isProcessing: boolean;
+  savedSignatures: SavedSignatureData[];
+  activeSignatureId: string | null;
+  onSelectSavedSignature: (sig: SavedSignatureData) => void;
+  onSaveCurrentToLibrary: (name: string) => Promise<void>;
+  onDeleteSavedSignature: (id: string) => Promise<void>;
+  onSetDefaultSignature: (id: string) => Promise<void>;
+  onRenameSavedSignature: (id: string, newName: string) => Promise<void>;
+  onAddPresetSignature: (type: 'formal' | 'initials') => Promise<void>;
+  onEmptyLibrary: () => Promise<void>;
   savedDefaultInfo?: { isSaved: boolean; name: string; timestamp: number } | null;
   onResetToSample?: () => void;
   onClearSavedDefault?: () => void;
@@ -40,6 +48,15 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
   onAddSignatureToPage,
   hasPdfLoaded,
   isProcessing,
+  savedSignatures,
+  activeSignatureId,
+  onSelectSavedSignature,
+  onSaveCurrentToLibrary,
+  onDeleteSavedSignature,
+  onSetDefaultSignature,
+  onRenameSavedSignature,
+  onAddPresetSignature,
+  onEmptyLibrary,
   savedDefaultInfo,
   onResetToSample,
   onClearSavedDefault,
@@ -68,20 +85,23 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
     e.stopPropagation();
   };
 
+  const activeSavedSig = savedSignatures.find((s) => s.id === activeSignatureId);
+  const isCurrentSaved = !!activeSavedSig;
+
   return (
     <aside
       id="signature-control-sidebar"
-      className="w-full md:w-80 lg:w-88 bg-white border-r border-slate-200 flex flex-col h-auto md:h-full shrink-0 shadow-xs z-10 overflow-y-auto"
+      className="w-full md:w-84 lg:w-92 bg-white border-r border-slate-200 flex flex-col h-auto md:h-full shrink-0 shadow-xs z-10 overflow-y-auto"
     >
       {/* Panel Header */}
-      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Signature Setup</h2>
-            <p className="text-[11px] text-slate-500">Import JPG & place on document</p>
+            <p className="text-[11px] text-slate-500">Save & switch between multiple signatures</p>
           </div>
         </div>
 
@@ -89,8 +109,8 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
           <button
             type="button"
             onClick={() => onImageSelected('')}
-            className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 font-medium p-1 hover:bg-rose-50 rounded"
-            title="Reset signature"
+            className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 font-medium p-1 hover:bg-rose-50 rounded cursor-pointer"
+            title="Clear signature"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Clear</span>
@@ -99,36 +119,44 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
       </div>
 
       <div className="p-4 space-y-5 flex-1">
-        {/* Step 1: Import JPG Signature */}
-        <div>
+        {/* Hidden file input for uploading JPG signature */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/jpeg,image/jpg,image/png"
+          className="hidden"
+          id="signature-file-input"
+        />
+
+        {/* Feature 1: Multiple Signatures Library (Dropdown & Gallery View) */}
+        <SignatureGallery
+          signatures={savedSignatures}
+          activeSignatureId={activeSignatureId}
+          onSelect={onSelectSavedSignature}
+          onSaveCurrentAsNew={onSaveCurrentToLibrary}
+          onDelete={onDeleteSavedSignature}
+          onSetDefault={onSetDefaultSignature}
+          onRename={onRenameSavedSignature}
+          onAddNewJpgClick={() => fileInputRef.current?.click()}
+          onAddPreset={onAddPresetSignature}
+          onEmptyLibrary={onEmptyLibrary}
+          isCurrentSavedInLibrary={isCurrentSaved}
+        />
+
+        {/* Feature 2: Active Signature Preview & Translucency */}
+        <div className="pt-2 border-t border-slate-100">
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">
-              1. Signature JPG
+              Active Signature Preview
             </label>
-            {savedDefaultInfo?.isSaved ? (
-              <div
-                className="flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shadow-2xs"
-                title="This signature will automatically load every time you open this app"
-              >
+            {activeSavedSig?.isDefault && (
+              <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
                 <BookmarkCheck className="w-3 h-3 text-emerald-600" />
-                <span>Default Loaded</span>
-              </div>
-            ) : isSavingDefault ? (
-              <div className="flex items-center gap-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-                <RefreshCw className="w-2.5 h-2.5 animate-spin text-indigo-600" />
-                <span>Saving default...</span>
-              </div>
-            ) : null}
+                Default Signature
+              </span>
+            )}
           </div>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/jpeg,image/jpg,image/png"
-            className="hidden"
-            id="signature-file-input"
-          />
 
           {!rawImageSource ? (
             <div
@@ -142,7 +170,7 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
                 <Upload className="w-5 h-5" />
               </div>
               <p className="text-xs font-medium text-slate-700 mb-1">
-                Drop JPG signature here
+                Drop new JPG signature here
               </p>
               <p className="text-[11px] text-slate-400 mb-3">
                 Photo or scan of handwritten signature
@@ -187,82 +215,29 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
                 <div className="px-3 py-2 bg-white border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span>Background translucent</span>
+                    <span className="truncate max-w-[150px] font-medium text-slate-700">
+                      {activeSavedSig?.name || 'Active Signature'}
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-indigo-600 hover:text-indigo-700 font-medium"
+                    className="text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer"
                   >
-                    Change JPG
+                    Replace JPG
                   </button>
                 </div>
               </div>
-
-              {/* Saved Default Info Banner */}
-              {savedDefaultInfo?.isSaved && (
-                <div className="p-2.5 bg-emerald-50/70 rounded-xl border border-emerald-100 flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5 text-emerald-900 min-w-0">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className="truncate font-medium" title={savedDefaultInfo.name}>
-                      {savedDefaultInfo.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {onResetToSample && (
-                      <button
-                        type="button"
-                        onClick={onResetToSample}
-                        className="text-slate-600 hover:text-indigo-600 font-medium text-[10px] flex items-center gap-0.5"
-                        title="Switch back to the demo sample signature"
-                      >
-                        <Undo2 className="w-2.5 h-2.5" />
-                        <span>Sample</span>
-                      </button>
-                    )}
-                    {onClearSavedDefault && (
-                      <button
-                        type="button"
-                        onClick={onClearSavedDefault}
-                        className="text-rose-600 hover:text-rose-700 font-medium text-[10px]"
-                        title="Forget this saved signature"
-                      >
-                        Forget
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Quick Sample Signature Generator Button (when cleared) */}
-          {!rawImageSource && (
-            <div className="mt-2 text-center">
-              <button
-                type="button"
-                onClick={async () => {
-                  if (onResetToSample) {
-                    onResetToSample();
-                  } else {
-                    const sampleDataUrl = await createSampleSignatureJpg();
-                    onImageSelected(sampleDataUrl);
-                  }
-                }}
-                className="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium underline underline-offset-2"
-              >
-                Use sample handwritten signature
-              </button>
             </div>
           )}
         </div>
 
-        {/* Translucency & Ink Tuning */}
+        {/* Feature 3: Translucency & Ink Tuning */}
         {processedSignature && (
           <div className="space-y-4 pt-1 border-t border-slate-100">
             <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <Sliders className="w-3.5 h-3.5" />
-              <span>2. Translucency & Ink Tuning</span>
+              <span>Translucency & Ink Tuning</span>
             </div>
 
             {/* Threshold Slider for White Paper Removal */}
@@ -288,7 +263,7 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
                 />
                 <div className="flex justify-between text-[10px] text-slate-400">
                   <span>Keep faint ink</span>
-                  <span>Eliminate shadow paper</span>
+                  <span>Eliminate paper shadows</span>
                 </div>
               </div>
             )}
@@ -342,7 +317,7 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
                         inkColorMode: mode.id as any,
                       })
                     }
-                    className={`text-xs py-1.5 px-2 rounded-lg border font-medium transition-all ${
+                    className={`text-xs py-1.5 px-2 rounded-lg border font-medium transition-all cursor-pointer ${
                       settings.inkColorMode === mode.id
                         ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
                         : 'border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -358,13 +333,13 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
             <div className="p-2.5 bg-blue-50/60 rounded-lg border border-blue-100 flex items-start gap-2 text-[11px] text-blue-700">
               <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-500" />
               <span>
-                White paper is made translucent so underlying printed text or signature lines stay cleanly visible.
+                White paper is made translucent so underlying document text or signature lines stay cleanly visible.
               </span>
             </div>
           </div>
         )}
 
-        {/* Step 3: Place on Document */}
+        {/* Feature 4: Place on Document Action */}
         {processedSignature && (
           <div className="pt-2 border-t border-slate-100">
             <button
@@ -379,7 +354,7 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
               }`}
             >
               <Plus className="w-4 h-4" />
-              <span>3. Place Signature on Document</span>
+              <span>Place Signature on Document</span>
             </button>
             {!hasPdfLoaded && (
               <p className="text-[11px] text-amber-600 mt-1.5 text-center">

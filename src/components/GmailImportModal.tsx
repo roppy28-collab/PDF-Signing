@@ -17,6 +17,7 @@ import {
   googleLogout,
   getAccessToken,
   initAuth,
+  isGoogleApiConfigured,
 } from '../utils/googleAuth';
 import {
   listGmailPdfAttachments,
@@ -218,7 +219,30 @@ export const GmailImportModal: React.FC<GmailImportModalProps> = ({
             </div>
           )}
 
-          {!googleUser ? (
+          {!isGoogleApiConfigured() ? (
+            <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-3">
+              <div className="w-10 h-10 rounded-full bg-slate-100 shadow-xs border border-slate-200 mx-auto flex items-center justify-center">
+                <Mail className="w-5 h-5 text-slate-500" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-800">
+                  Google API Not Configured
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Google API credentials have been removed from the application. You can upload or drag and drop any PDF file directly into the application to sign it.
+                </p>
+              </div>
+              <div className="pt-2 flex justify-center">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl shadow-xs font-semibold text-xs transition-all cursor-pointer"
+                >
+                  Close & Drag/Drop PDF
+                </button>
+              </div>
+            </div>
+          ) : !googleUser ? (
             <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 text-center space-y-3">
               <div className="w-10 h-10 rounded-full bg-white shadow-xs border border-slate-200 mx-auto flex items-center justify-center">
                 <Mail className="w-5 h-5 text-red-600" />

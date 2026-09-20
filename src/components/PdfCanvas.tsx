@@ -480,7 +480,7 @@ export const PdfCanvas: React.FC<PdfCanvasProps> = ({
               >
                 {/* The Translucent Cutout Signature Image */}
                 <img
-                  src={processedSignature.dataUrl}
+                  src={placement.signaturePngDataUrl || processedSignature?.dataUrl}
                   alt="Placed Signature"
                   className="w-full h-full object-contain pointer-events-none select-none"
                   draggable={false}

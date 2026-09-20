@@ -9,9 +9,38 @@ import {
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Initialize Firebase App singleton
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// Check if Google API / Firebase is configured with a valid API key
+export const isGoogleApiConfigured = (): boolean => {
+  return Boolean(
+    firebaseConfig &&
+    typeof firebaseConfig.apiKey === 'string' &&
+    firebaseConfig.apiKey.trim().length > 0 &&
+    !firebaseConfig.apiKey.includes('YOUR_')
+  );
+};
+
+// Lazy initialization of Firebase App and Auth
+let appInstance: any = null;
+let authInstance: any = null;
+
+export const getAuthInstance = () => {
+  if (!isGoogleApiConfigured()) {
+    return null;
+  }
+  if (!appInstance) {
+    appInstance = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+    authInstance = getAuth(appInstance);
+  }
+  return authInstance;
+};
+
+// Backwards compatibility export
+export const auth = {
+  get currentUser() {
+    const a = getAuthInstance();
+    return a ? a.currentUser : null;
+  },
+};
 
 export const GMAIL_SCOPES = [
   'https://mail.google.com/',
@@ -39,7 +68,12 @@ export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
+  const instance = getAuthInstance();
+  if (!instance) {
+    if (onAuthFailure) onAuthFailure();
+    return () => {};
+  }
+  return onAuthStateChanged(instance, async (user: User | null) => {
     if (user && cachedAccessToken) {
       if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
     } else {
@@ -49,9 +83,13 @@ export const initAuth = (
 };
 
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+  const instance = getAuthInstance();
+  if (!instance) {
+    throw new Error('Google API credentials have been removed from the application.');
+  }
   try {
     isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(instance, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
       throw new Error('Failed to get access token from Google sign-in.');
@@ -72,6 +110,9 @@ export const getAccessToken = (): string | null => {
 };
 
 export const googleLogout = async (): Promise<void> => {
-  await signOut(auth);
+  const instance = getAuthInstance();
+  if (instance) {
+    await signOut(instance);
+  }
   cachedAccessToken = null;
 };

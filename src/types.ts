@@ -6,6 +6,7 @@ export interface SignaturePlacement {
   width: number; // in PDF points
   height: number; // in PDF points
   rotation: number; // degrees
+  signaturePngDataUrl?: string;
 }
 
 export interface SignatureSettings {
@@ -32,4 +33,6 @@ export interface SavedSignatureData {
   timestamp: number;
   lastWidth?: number;
   lastRotation?: number;
+  isDefault?: boolean;
+  thumbnailUrl?: string;
 }

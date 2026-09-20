@@ -4,15 +4,21 @@ import { DropZone } from './components/DropZone';
 import { SignaturePanel } from './components/SignaturePanel';
 import { PdfCanvas } from './components/PdfCanvas';
 import { NotificationModal } from './components/NotificationModal';
-import { LoadedPdfInfo, SignaturePlacement, SignatureSettings } from './types';
+import { LoadedPdfInfo, SavedSignatureData, SignaturePlacement, SignatureSettings } from './types';
 import { processSignatureImage, ProcessedSignature } from './utils/imageProcessor';
 import { createSamplePdf } from './utils/samplePdf';
-import { createSampleSignatureJpg } from './utils/sampleSignature';
+import { createSampleSignatureJpg, createSampleInitialsJpg } from './utils/sampleSignature';
 import { signPdfDocument, savePdfToLocalFolder } from './utils/pdfSigner';
 import {
+  saveSignatureToLibrary,
+  getAllSavedSignatures,
+  deleteSignatureFromLibrary,
+  setDefaultSignatureId,
+  renameSavedSignature,
   saveDefaultSignature,
   getDefaultSignature,
   clearDefaultSignature,
+  clearAllSignaturesFromLibrary,
 } from './utils/signatureStorage';
 import { PDFDocument } from 'pdf-lib';
 import { FileUp, AlertCircle, CheckCircle2, Info } from 'lucide-react';
@@ -38,6 +44,10 @@ export default function App() {
     opacity: 0.95,
     inkColorMode: 'original',
   });
+
+  // Multiple saved signatures library state
+  const [savedSignatures, setSavedSignatures] = useState<SavedSignatureData[]>([]);
+  const [activeSignatureId, setActiveSignatureId] = useState<string | null>(null);
 
   // Default signature persistence state
   const [savedDefaultInfo, setSavedDefaultInfo] = useState<{
@@ -186,42 +196,191 @@ export default function App() {
     };
   }, [rawImageSource, settings]);
 
-  // Initial load: load sample PDF and restore last used signature (or sample on first visit)
+  // Initial load: load sample PDF and restore signatures library
   useEffect(() => {
     handleLoadSamplePdf();
 
-    async function initDefaultSignature() {
+    async function initSignaturesLibrary() {
       try {
-        const saved = await getDefaultSignature();
-        if (saved && saved.dataUrl) {
-          setRawImageSource(saved.dataUrl);
-          if (saved.settings) {
-            setSettings(saved.settings);
+        // User requested: "Empty library and memory" / fix 1629 signatures
+        // Detect runaway bloat (>20 items) or perform initial clean purge
+        const list = await getAllSavedSignatures();
+        if (list.length > 20 || localStorage.getItem('purged_1629_corrupt') !== 'true') {
+          await clearAllSignaturesFromLibrary();
+          localStorage.setItem('purged_1629_corrupt', 'true');
+          setSavedSignatures([]);
+          setActiveSignatureId(null);
+          setRawImageSource(null);
+          setProcessedSignature(null);
+          setSavedDefaultInfo(null);
+          return;
+        }
+
+        setSavedSignatures(list);
+
+        const defaultSig = list.find((s) => s.isDefault) || list[0];
+        if (defaultSig && defaultSig.dataUrl) {
+          setActiveSignatureId(defaultSig.id);
+          setRawImageSource(defaultSig.dataUrl);
+          if (defaultSig.settings) {
+            setSettings(defaultSig.settings);
           }
-          if (saved.lastWidth) {
-            setPreferredWidth(saved.lastWidth);
+          if (defaultSig.lastWidth) {
+            setPreferredWidth(defaultSig.lastWidth);
           }
-          if (saved.lastRotation) {
-            setPreferredRotation(saved.lastRotation);
+          if (defaultSig.lastRotation) {
+            setPreferredRotation(defaultSig.lastRotation);
           }
           setSavedDefaultInfo({
             isSaved: true,
-            name: saved.name || 'Saved Signature',
-            timestamp: saved.timestamp,
+            name: defaultSig.name || 'Saved Signature',
+            timestamp: defaultSig.timestamp,
           });
           return;
         }
       } catch (err) {
-        console.warn('Could not load saved default signature:', err);
+        console.warn('Could not load signatures library:', err);
       }
-
-      // First time visitor fallback: sample handwritten signature
-      const sampleSig = createSampleSignatureJpg();
-      setRawImageSource(sampleSig);
     }
 
-    initDefaultSignature();
+    initSignaturesLibrary();
   }, []);
+
+  // Switch to a chosen saved signature from Gallery or Dropdown
+  const handleSelectSavedSignature = useCallback(
+    (sig: SavedSignatureData) => {
+      setActiveSignatureId(sig.id);
+      setRawImageSource(sig.dataUrl);
+      if (sig.settings) {
+        setSettings(sig.settings);
+      }
+      if (sig.lastWidth) {
+        setPreferredWidth(sig.lastWidth);
+      }
+      if (sig.lastRotation !== undefined) {
+        setPreferredRotation(sig.lastRotation);
+      }
+      setSavedDefaultInfo({
+        isSaved: !!sig.isDefault,
+        name: sig.name,
+        timestamp: sig.timestamp,
+      });
+      showToast(`Active signature: "${sig.name}"`, 'info');
+    },
+    [showToast]
+  );
+
+  // Save current signature as a new entry in library
+  const handleSaveCurrentToLibrary = useCallback(
+    async (name: string) => {
+      if (!rawImageSource) return;
+
+      let dataUrl = '';
+      if (typeof rawImageSource === 'string') {
+        dataUrl = rawImageSource;
+      } else {
+        dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(rawImageSource);
+        });
+      }
+
+      const newSig = await saveSignatureToLibrary({
+        name,
+        dataUrl,
+        settings,
+        lastWidth: preferredWidth,
+        lastRotation: preferredRotation,
+        isDefault: savedSignatures.length === 0,
+      });
+
+      const updatedList = await getAllSavedSignatures();
+      setSavedSignatures(updatedList);
+      setActiveSignatureId(newSig.id);
+      showToast(`Saved "${newSig.name}" to your library`, 'success');
+    },
+    [rawImageSource, settings, preferredWidth, preferredRotation, savedSignatures.length, showToast]
+  );
+
+  // Delete a saved signature from library
+  const handleDeleteSavedSignature = useCallback(
+    async (id: string) => {
+      await deleteSignatureFromLibrary(id);
+      const updatedList = await getAllSavedSignatures();
+      setSavedSignatures(updatedList);
+
+      if (activeSignatureId === id) {
+        const next = updatedList.find((s) => s.isDefault) || updatedList[0];
+        if (next) {
+          handleSelectSavedSignature(next);
+        } else {
+          setActiveSignatureId(null);
+          setRawImageSource(null);
+        }
+      }
+      showToast('Signature deleted from library', 'info');
+    },
+    [activeSignatureId, handleSelectSavedSignature, showToast]
+  );
+
+  // Set default signature
+  const handleSetDefaultSignature = useCallback(
+    async (id: string) => {
+      await setDefaultSignatureId(id);
+      const updatedList = await getAllSavedSignatures();
+      setSavedSignatures(updatedList);
+      const target = updatedList.find((s) => s.id === id);
+      if (target) {
+        setSavedDefaultInfo({
+          isSaved: true,
+          name: target.name,
+          timestamp: target.timestamp,
+        });
+        showToast(`"${target.name}" set as default signature`, 'success');
+      }
+    },
+    [showToast]
+  );
+
+  // Rename saved signature
+  const handleRenameSavedSignature = useCallback(
+    async (id: string, newName: string) => {
+      await renameSavedSignature(id, newName);
+      const updatedList = await getAllSavedSignatures();
+      setSavedSignatures(updatedList);
+      showToast(`Renamed to "${newName}"`, 'success');
+    },
+    [showToast]
+  );
+
+  // Add preset signature (e.g. Formal script or Blue initials)
+  const handleAddPresetSignature = useCallback(
+    async (type: 'formal' | 'initials') => {
+      const dataUrl = type === 'formal' ? createSampleSignatureJpg() : createSampleInitialsJpg();
+      const name = type === 'formal' ? 'Formal Script' : 'Blue Initials';
+      const presetSettings: SignatureSettings =
+        type === 'formal'
+          ? { removeBackground: true, threshold: 220, feathering: 20, opacity: 0.95, inkColorMode: 'original' }
+          : { removeBackground: true, threshold: 215, feathering: 15, opacity: 0.95, inkColorMode: 'royal-blue' };
+
+      const saved = await saveSignatureToLibrary({
+        name,
+        dataUrl,
+        settings: presetSettings,
+        lastWidth: type === 'formal' ? 170 : 120,
+        lastRotation: 0,
+        isDefault: false,
+      });
+
+      const updatedList = await getAllSavedSignatures();
+      setSavedSignatures(updatedList);
+      handleSelectSavedSignature(saved);
+      showToast(`Added sample: "${name}"`, 'success');
+    },
+    [handleSelectSavedSignature, showToast]
+  );
 
   // Handle user selecting/uploading a new signature image
   const handleImageSelected = useCallback(
@@ -242,7 +401,7 @@ export default function App() {
             ? 'Sample Signature'
             : 'Imported Signature';
         } else {
-          sigName = source.name || 'Uploaded Signature';
+          sigName = source.name.replace(/\.[^/.]+$/, '') || 'Uploaded Signature';
           dataUrl = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
@@ -253,48 +412,46 @@ export default function App() {
 
         setRawImageSource(dataUrl);
 
-        // Automatically save as default signature for future sessions
-        const saved = await saveDefaultSignature(dataUrl, settings, sigName, {
+        // Automatically save into the signature library and activate it
+        const saved = await saveSignatureToLibrary({
+          name: sigName,
+          dataUrl,
+          settings,
           lastWidth: preferredWidth,
           lastRotation: preferredRotation,
+          isDefault: savedSignatures.length === 0,
         });
 
+        const updatedList = await getAllSavedSignatures();
+        setSavedSignatures(updatedList);
+        setActiveSignatureId(saved.id);
+
         setSavedDefaultInfo({
-          isSaved: true,
+          isSaved: saved.isDefault || false,
           name: saved.name,
           timestamp: saved.timestamp,
         });
+
+        showToast(`Added "${saved.name}" to your signatures`, 'success');
       } catch (err) {
-        console.error('Failed to save signature as default:', err);
+        console.error('Failed to save signature:', err);
       } finally {
         setIsSavingDefault(false);
       }
     },
-    [settings, preferredWidth, preferredRotation]
+    [settings, preferredWidth, preferredRotation, savedSignatures.length, showToast]
   );
 
-  // Auto-sync signature tuning adjustments to default signature in storage
-  useEffect(() => {
-    if (!rawImageSource || typeof rawImageSource !== 'string') return;
-
-    const timer = setTimeout(async () => {
-      try {
-        await saveDefaultSignature(
-          rawImageSource,
-          settings,
-          savedDefaultInfo?.name || 'My Signature',
-          {
-            lastWidth: preferredWidth,
-            lastRotation: preferredRotation,
-          }
-        );
-      } catch (e) {
-        // quiet catch
-      }
-    }, 600);
-
-    return () => clearTimeout(timer);
-  }, [settings, rawImageSource, savedDefaultInfo?.name, preferredWidth, preferredRotation]);
+  // Empty entire signature library and wipe memory
+  const handleEmptyLibrary = useCallback(async () => {
+    await clearAllSignaturesFromLibrary();
+    setSavedSignatures([]);
+    setActiveSignatureId(null);
+    setRawImageSource(null);
+    setProcessedSignature(null);
+    setSavedDefaultInfo(null);
+    showToast('Signature library and memory emptied', 'info');
+  }, [showToast]);
 
   // Reset to demo sample signature
   const handleResetToSample = useCallback(async () => {
@@ -335,6 +492,7 @@ export default function App() {
       width,
       height,
       rotation: preferredRotation || 0,
+      signaturePngDataUrl: processedSignature.dataUrl,
     };
 
     setPlacements((prev) => [...prev, newPlacement]);
@@ -355,6 +513,7 @@ export default function App() {
         width,
         height,
         rotation: preferredRotation || 0,
+        signaturePngDataUrl: processedSignature.dataUrl,
       };
 
       setPlacements((prev) => [...prev, newPlacement]);
@@ -538,6 +697,15 @@ export default function App() {
           onAddSignatureToPage={handleAddSignatureToPage}
           hasPdfLoaded={!!pdfInfo}
           isProcessing={isProcessingSignature}
+          savedSignatures={savedSignatures}
+          activeSignatureId={activeSignatureId}
+          onSelectSavedSignature={handleSelectSavedSignature}
+          onSaveCurrentToLibrary={handleSaveCurrentToLibrary}
+          onDeleteSavedSignature={handleDeleteSavedSignature}
+          onSetDefaultSignature={handleSetDefaultSignature}
+          onRenameSavedSignature={handleRenameSavedSignature}
+          onAddPresetSignature={handleAddPresetSignature}
+          onEmptyLibrary={handleEmptyLibrary}
           savedDefaultInfo={savedDefaultInfo}
           onResetToSample={handleResetToSample}
           onClearSavedDefault={handleClearSavedDefault}

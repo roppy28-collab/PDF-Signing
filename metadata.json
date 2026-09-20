@@ -1,6 +1,6 @@
 {
   "name": "PDF Signer",
-  "description": "Open PDF files by drag and drop, sign with an imported translucent JPG signature, save to your local folder, and share via Gmail and Outlook.",
+  "description": "Open PDF files by drag and drop, manage and switch between multiple saved translucent JPG signatures, save to your local folder, and share via Gmail and Outlook.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

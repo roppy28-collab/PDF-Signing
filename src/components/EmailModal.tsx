@@ -20,6 +20,7 @@ import {
   googleLogout,
   getAccessToken,
   initAuth,
+  isGoogleApiConfigured,
 } from '../utils/googleAuth';
 import { sendEmailViaGmail, createGmailDraft } from '../utils/gmailApi';
 import {
@@ -44,7 +45,10 @@ export const EmailModal: React.FC<EmailModalProps> = ({
   documentName,
   onShowToast,
 }) => {
-  const [activeTab, setActiveTab] = useState<'gmail' | 'outlook'>('gmail');
+  const googleConfigured = isGoogleApiConfigured();
+  const [activeTab, setActiveTab] = useState<'gmail' | 'outlook'>(
+    googleConfigured ? 'gmail' : 'outlook'
+  );
 
   // Form State
   const [toEmail, setToEmail] = useState('');
@@ -371,8 +375,31 @@ export const EmailModal: React.FC<EmailModalProps> = ({
           {/* TAB 1: GMAIL */}
           {activeTab === 'gmail' && (
             <div className="space-y-4">
-              {/* If user is not signed in to Google */}
-              {!googleUser ? (
+              {/* If Google API is not configured */}
+              {!googleConfigured ? (
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-3">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 shadow-xs border border-slate-200 mx-auto flex items-center justify-center">
+                    <Mail className="w-5 h-5 text-slate-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-slate-800">
+                      Google API Not Configured
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                      Google API credentials have been removed from the application. You can use Outlook, Microsoft 365, or desktop mail to send your signed document.
+                    </p>
+                  </div>
+                  <div className="pt-2 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('outlook')}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs font-semibold text-xs transition-all cursor-pointer"
+                    >
+                      Switch to Outlook / Email
+                    </button>
+                  </div>
+                </div>
+              ) : !googleUser ? (
                 <div className="p-5 rounded-2xl bg-indigo-50/50 border border-indigo-100 text-center space-y-3">
                   <div className="w-10 h-10 rounded-full bg-white shadow-xs border border-indigo-100 mx-auto flex items-center justify-center">
                     <Mail className="w-5 h-5 text-indigo-600" />

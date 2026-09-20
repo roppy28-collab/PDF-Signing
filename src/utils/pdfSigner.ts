@@ -16,9 +16,23 @@ export async function signPdfDocument(options: SignPdfOptions): Promise<Uint8Arr
   // Load the PDF
   const pdfDoc = await PDFDocument.load(pdfBytes);
 
-  // Convert PNG data URL to Uint8Array bytes
-  const signatureBytes = dataUrlToUint8Array(signaturePngDataUrl);
-  const embeddedImage = await pdfDoc.embedPng(signatureBytes);
+  // Cache embedded PNG images by data URL so duplicate signatures don't bloat the PDF
+  const imageCache = new Map<string, any>();
+
+  const getEmbeddedImage = async (dataUrl: string) => {
+    if (imageCache.has(dataUrl)) {
+      return imageCache.get(dataUrl);
+    }
+    const signatureBytes = dataUrlToUint8Array(dataUrl);
+    const embedded = await pdfDoc.embedPng(signatureBytes);
+    imageCache.set(dataUrl, embedded);
+    return embedded;
+  };
+
+  // Pre-cache fallback image
+  if (signaturePngDataUrl) {
+    await getEmbeddedImage(signaturePngDataUrl);
+  }
 
   const pages = pdfDoc.getPages();
 
@@ -26,6 +40,10 @@ export async function signPdfDocument(options: SignPdfOptions): Promise<Uint8Arr
     const pageIndex = placement.pageNumber - 1;
     if (pageIndex < 0 || pageIndex >= pages.length) continue;
 
+    const targetDataUrl = placement.signaturePngDataUrl || signaturePngDataUrl;
+    if (!targetDataUrl) continue;
+
+    const embeddedImage = await getEmbeddedImage(targetDataUrl);
     const page = pages[pageIndex];
     const rotationDeg = placement.rotation || 0;
 
