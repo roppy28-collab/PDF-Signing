@@ -1,0 +1,8 @@
+{
+  "name": "PDF Signer",
+  "description": "Open PDF files by drag and drop, sign with an imported translucent JPG signature, and save to your local folder.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
