@@ -482,8 +482,6 @@ export default function App() {
           onAddSignatureToPage={handleAddSignatureToPage}
           hasPdfLoaded={!!pdfInfo}
           isProcessing={isProcessingSignature}
-          selectedPlacement={selectedPlacement}
-          onUpdatePlacement={handleUpdatePlacement}
           savedDefaultInfo={savedDefaultInfo}
           onResetToSample={handleResetToSample}
           onClearSavedDefault={handleClearSavedDefault}

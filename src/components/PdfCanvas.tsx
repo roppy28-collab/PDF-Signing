@@ -452,6 +452,7 @@ export const PdfCanvas: React.FC<PdfCanvasProps> = ({
             const isSelected = selectedPlacementId === placement.id;
             const isCurrentlyRotating =
               activeDrag?.type === 'rotate' && activeDrag.placementId === placement.id;
+            const isNearTop = screenY < 95;
 
             return (
               <div
@@ -492,10 +493,12 @@ export const PdfCanvas: React.FC<PdfCanvasProps> = ({
                   </div>
                 )}
 
-                {/* Floating Multi-Action Bar (Position, Rotate, Resize, Remove) */}
+                {/* Floating Multi-Action Bar (Position, Rotate, Resize, Remove) with generous clearance from rotation knob */}
                 {isSelected && (
                   <div
-                    className="absolute -top-11 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-xs text-white rounded-xl px-2 py-1 flex items-center gap-1 shadow-xl text-xs z-30 pointer-events-auto border border-slate-700/50"
+                    className={`absolute ${
+                      isNearTop ? 'top-[calc(100%+16px)]' : '-top-22'
+                    } left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-xs text-white rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 shadow-xl text-xs z-30 pointer-events-auto border border-slate-700/50 whitespace-nowrap`}
                     onPointerDown={(e) => e.stopPropagation()}
                   >
                     <span className="text-[10px] text-slate-300 px-1 font-medium flex items-center gap-1">
@@ -503,63 +506,67 @@ export const PdfCanvas: React.FC<PdfCanvasProps> = ({
                       Drag
                     </span>
 
-                    <div className="h-3.5 w-px bg-slate-700 mx-0.5" />
+                    <div className="h-3.5 w-px bg-slate-700 mx-1" />
 
                     {/* Quick Rotate Buttons */}
-                    <button
-                      type="button"
-                      onClick={() => adjustRotation(placement, -90)}
-                      className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
-                      title="Rotate -90° (Counter-clockwise)"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => adjustRotation(placement, 90)}
-                      className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
-                      title="Rotate +90° (Clockwise)"
-                    >
-                      <RotateCw className="w-3 h-3" />
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => adjustRotation(placement, -90)}
+                        className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Rotate -90° (Counter-clockwise)"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => adjustRotation(placement, 90)}
+                        className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Rotate +90° (Clockwise)"
+                      >
+                        <RotateCw className="w-3 h-3" />
+                      </button>
 
-                    {/* Rotation Angle Readout & Reset to 0 */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onUpdatePlacement({
-                          ...placement,
-                          rotation: 0,
-                        })
-                      }
-                      className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-indigo-300 transition-colors flex items-center gap-1"
-                      title="Reset Rotation to 0°"
-                    >
-                      <Compass className="w-2.5 h-2.5 text-indigo-400" />
-                      <span>{placement.rotation || 0}°</span>
-                    </button>
+                      {/* Rotation Angle Readout & Reset to 0 */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onUpdatePlacement({
+                            ...placement,
+                            rotation: 0,
+                          })
+                        }
+                        className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-mono text-indigo-300 transition-colors flex items-center gap-1 ml-0.5"
+                        title="Reset Rotation to 0°"
+                      >
+                        <Compass className="w-2.5 h-2.5 text-indigo-400" />
+                        <span>{placement.rotation || 0}°</span>
+                      </button>
+                    </div>
 
-                    <div className="h-3.5 w-px bg-slate-700 mx-0.5" />
+                    <div className="h-3.5 w-px bg-slate-700 mx-1" />
 
                     {/* Quick Scale Buttons */}
-                    <button
-                      type="button"
-                      onClick={() => adjustSize(placement, 0.85)}
-                      className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
-                      title="Shrink (-15%)"
-                    >
-                      <ZoomOut className="w-3 h-3" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => adjustSize(placement, 1.15)}
-                      className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
-                      title="Enlarge (+15%)"
-                    >
-                      <ZoomIn className="w-3 h-3" />
-                    </button>
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => adjustSize(placement, 0.85)}
+                        className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Shrink (-15%)"
+                      >
+                        <ZoomOut className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => adjustSize(placement, 1.15)}
+                        className="p-1 hover:bg-slate-800 rounded text-slate-300 hover:text-white transition-colors"
+                        title="Enlarge (+15%)"
+                      >
+                        <ZoomIn className="w-3 h-3" />
+                      </button>
+                    </div>
 
-                    <div className="h-3.5 w-px bg-slate-700 mx-0.5" />
+                    <div className="h-3.5 w-px bg-slate-700 mx-1" />
 
                     {/* Delete Placement */}
                     <button
@@ -573,22 +580,22 @@ export const PdfCanvas: React.FC<PdfCanvasProps> = ({
                   </div>
                 )}
 
-                {/* Interactive Top Rotation Stem & Handle */}
+                {/* Interactive Top Rotation Stem & Handle (Separated with generous room below the control bar) */}
                 {isSelected && (
                   <div
-                    className="absolute -top-7 left-1/2 -translate-x-1/2 flex flex-col items-center z-20 pointer-events-auto"
+                    className="absolute -top-9 left-1/2 -translate-x-1/2 flex flex-col items-center z-20 pointer-events-auto"
                     onPointerDown={(e) => handlePointerDownRotate(e, placement)}
                   >
                     {/* Circle Rotation Knob */}
                     <div
                       id="signature-rotate-handle"
-                      className="w-5 h-5 rounded-full bg-white border-2 border-indigo-600 shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
+                      className="w-6 h-6 rounded-full bg-white border-2 border-indigo-600 shadow-md flex items-center justify-center cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
                       title="Drag to rotate freely (360°)"
                     >
-                      <RotateCw className="w-2.5 h-2.5 text-indigo-600 pointer-events-none" />
+                      <RotateCw className="w-3 h-3 text-indigo-600 pointer-events-none" />
                     </div>
-                    {/* Stem Line */}
-                    <div className="w-0.5 h-2.5 bg-indigo-600 pointer-events-none" />
+                    {/* Stem Line connecting to signature top edge */}
+                    <div className="w-0.5 h-3 bg-indigo-600 pointer-events-none" />
                   </div>
                 )}
 

@@ -8,16 +8,11 @@ import {
   Plus,
   RefreshCw,
   Info,
-  RotateCw,
-  RotateCcw,
-  Maximize2,
-  Minimize2,
-  Compass,
   BookmarkCheck,
   CheckCircle2,
   Undo2
 } from 'lucide-react';
-import { SignatureSettings, SignaturePlacement } from '../types';
+import { SignatureSettings } from '../types';
 import { ProcessedSignature } from '../utils/imageProcessor';
 import { createSampleSignatureJpg } from '../utils/sampleSignature';
 
@@ -30,8 +25,6 @@ interface SignaturePanelProps {
   onAddSignatureToPage: () => void;
   hasPdfLoaded: boolean;
   isProcessing: boolean;
-  selectedPlacement?: SignaturePlacement | null;
-  onUpdatePlacement?: (placement: SignaturePlacement) => void;
   savedDefaultInfo?: { isSaved: boolean; name: string; timestamp: number } | null;
   onResetToSample?: () => void;
   onClearSavedDefault?: () => void;
@@ -47,8 +40,6 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
   onAddSignatureToPage,
   hasPdfLoaded,
   isProcessing,
-  selectedPlacement,
-  onUpdatePlacement,
   savedDefaultInfo,
   onResetToSample,
   onClearSavedDefault,
@@ -75,43 +66,6 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-  };
-
-  // Resize helper for selected placement
-  const handleScaleChange = (newWidth: number) => {
-    if (!selectedPlacement || !onUpdatePlacement) return;
-    const aspect = selectedPlacement.width / selectedPlacement.height;
-    const clampedWidth = Math.max(40, Math.min(450, newWidth));
-    const newHeight = clampedWidth / aspect;
-    const deltaH = newHeight - selectedPlacement.height;
-
-    onUpdatePlacement({
-      ...selectedPlacement,
-      width: Math.round(clampedWidth),
-      height: Math.round(newHeight),
-      y: Math.max(0, selectedPlacement.y - deltaH / 2),
-      x: Math.max(0, selectedPlacement.x - (clampedWidth - selectedPlacement.width) / 2),
-    });
-  };
-
-  const handleScaleStep = (factor: number) => {
-    if (!selectedPlacement) return;
-    handleScaleChange(selectedPlacement.width * factor);
-  };
-
-  // Rotation helper for selected placement
-  const handleRotationChange = (deg: number) => {
-    if (!selectedPlacement || !onUpdatePlacement) return;
-    const normalized = ((deg % 360) + 360) % 360;
-    onUpdatePlacement({
-      ...selectedPlacement,
-      rotation: normalized,
-    });
-  };
-
-  const handleRotationStep = (deltaDeg: number) => {
-    if (!selectedPlacement) return;
-    handleRotationChange((selectedPlacement.rotation || 0) + deltaDeg);
   };
 
   return (
@@ -303,198 +257,12 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
           )}
         </div>
 
-        {/* Step 2: Signature Size & Rotation Controls (When placed or selected) */}
-        {processedSignature && selectedPlacement && (
-          <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Compass className="w-4 h-4 text-indigo-600" />
-                <span className="text-xs font-semibold text-slate-800">
-                  Size & Rotation Controls
-                </span>
-              </div>
-              <span className="text-[10px] font-mono bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-medium">
-                Active on Page {selectedPlacement.pageNumber}
-              </span>
-            </div>
-
-            {/* Rotation Control */}
-            <div className="space-y-1.5 bg-white p-2.5 rounded-lg border border-indigo-100/70">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-600 font-medium flex items-center gap-1">
-                  <RotateCw className="w-3 h-3 text-slate-400" />
-                  Rotation Angle
-                </span>
-                <div className="flex items-center gap-1">
-                  <span className="font-mono text-indigo-600 font-semibold bg-indigo-50 px-1.5 py-0.5 rounded text-[11px]">
-                    {selectedPlacement.rotation || 0}°
-                  </span>
-                  {(selectedPlacement.rotation || 0) !== 0 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRotationChange(0)}
-                      className="text-[10px] text-slate-400 hover:text-indigo-600 underline"
-                      title="Reset to 0 degrees"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Continuous Angle Slider 0° - 360° */}
-              <input
-                id="signature-rotation-slider"
-                type="range"
-                min="0"
-                max="360"
-                step="1"
-                value={selectedPlacement.rotation || 0}
-                onChange={(e) => handleRotationChange(Number(e.target.value))}
-                className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg appearance-none"
-              />
-
-              {/* Quick Rotation Buttons */}
-              <div className="grid grid-cols-4 gap-1 pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleRotationStep(-90)}
-                  className="px-2 py-1 text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded font-medium text-slate-700 flex items-center justify-center gap-1"
-                  title="Rotate -90° counter-clockwise"
-                >
-                  <RotateCcw className="w-2.5 h-2.5 text-indigo-500" />
-                  -90°
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRotationStep(90)}
-                  className="px-2 py-1 text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded font-medium text-slate-700 flex items-center justify-center gap-1"
-                  title="Rotate +90° clockwise"
-                >
-                  <RotateCw className="w-2.5 h-2.5 text-indigo-500" />
-                  +90°
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRotationStep(180)}
-                  className="px-2 py-1 text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded font-medium text-slate-700 flex items-center justify-center"
-                  title="Flip 180°"
-                >
-                  180°
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleRotationChange(0)}
-                  className="px-2 py-1 text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded font-medium text-slate-700 flex items-center justify-center"
-                  title="Reset to 0°"
-                >
-                  0° Level
-                </button>
-              </div>
-
-              {/* Fine-tune +/- 5 degrees */}
-              <div className="flex items-center justify-between pt-0.5 text-[10px] text-slate-500">
-                <button
-                  type="button"
-                  onClick={() => handleRotationStep(-5)}
-                  className="hover:text-indigo-600"
-                >
-                  ◀ Tilt -5°
-                </button>
-                <span>Or drag top round handle on document</span>
-                <button
-                  type="button"
-                  onClick={() => handleRotationStep(5)}
-                  className="hover:text-indigo-600"
-                >
-                  Tilt +5° ▶
-                </button>
-              </div>
-            </div>
-
-            {/* Size / Scale Control */}
-            <div className="space-y-1.5 bg-white p-2.5 rounded-lg border border-indigo-100/70">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-600 font-medium flex items-center gap-1">
-                  <Maximize2 className="w-3 h-3 text-slate-400" />
-                  Signature Size
-                </span>
-                <span className="font-mono text-indigo-600 font-semibold bg-indigo-50 px-1.5 py-0.5 rounded text-[11px]">
-                  {Math.round(selectedPlacement.width)} × {Math.round(selectedPlacement.height)} pt
-                </span>
-              </div>
-
-              {/* Width Slider */}
-              <input
-                id="signature-size-slider"
-                type="range"
-                min="50"
-                max="350"
-                step="2"
-                value={selectedPlacement.width}
-                onChange={(e) => handleScaleChange(Number(e.target.value))}
-                className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg appearance-none"
-              />
-
-              {/* Quick Size Presets & Step Buttons */}
-              <div className="grid grid-cols-4 gap-1 pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleScaleStep(0.85)}
-                  className="px-2 py-1 text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded font-medium text-slate-700 flex items-center justify-center gap-1"
-                  title="Shrink signature 15%"
-                >
-                  <Minimize2 className="w-2.5 h-2.5 text-indigo-500" />
-                  -15%
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleScaleStep(1.15)}
-                  className="px-2 py-1 text-[11px] bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded font-medium text-slate-700 flex items-center justify-center gap-1"
-                  title="Enlarge signature 15%"
-                >
-                  <Maximize2 className="w-2.5 h-2.5 text-indigo-500" />
-                  +15%
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleScaleChange(120)}
-                  className={`px-2 py-1 text-[11px] border rounded font-medium transition-colors ${
-                    Math.abs(selectedPlacement.width - 120) < 10
-                      ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                  title="Compact size (120pt)"
-                >
-                  Small
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleScaleChange(190)}
-                  className={`px-2 py-1 text-[11px] border rounded font-medium transition-colors ${
-                    Math.abs(selectedPlacement.width - 190) < 10
-                      ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                  }`}
-                  title="Large size (190pt)"
-                >
-                  Large
-                </button>
-              </div>
-
-              <p className="text-[10px] text-slate-400 text-center pt-0.5">
-                Tip: Drag any of the 4 corner handles on the document to resize freely
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Translucency & Ink Tuning */}
         {processedSignature && (
           <div className="space-y-4 pt-1 border-t border-slate-100">
             <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <Sliders className="w-3.5 h-3.5" />
-              <span>Translucency & Ink Tuning</span>
+              <span>2. Translucency & Ink Tuning</span>
             </div>
 
             {/* Threshold Slider for White Paper Removal */}
@@ -596,7 +364,7 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
           </div>
         )}
 
-        {/* Step 3: Add to Document Button */}
+        {/* Step 3: Place on Document */}
         {processedSignature && (
           <div className="pt-2 border-t border-slate-100">
             <button
@@ -611,7 +379,7 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
               }`}
             >
               <Plus className="w-4 h-4" />
-              <span>Place Signature on Document</span>
+              <span>3. Place Signature on Document</span>
             </button>
             {!hasPdfLoaded && (
               <p className="text-[11px] text-amber-600 mt-1.5 text-center">
