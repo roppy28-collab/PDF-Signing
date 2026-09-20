@@ -15,7 +15,9 @@ import {
   clearDefaultSignature,
 } from './utils/signatureStorage';
 import { PDFDocument } from 'pdf-lib';
-import { FileUp, AlertCircle } from 'lucide-react';
+import { FileUp, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { EmailModal } from './components/EmailModal';
+import { GmailImportModal } from './components/GmailImportModal';
 
 export default function App() {
   // PDF state
@@ -67,6 +69,32 @@ export default function App() {
     fileName: '',
     bytes: null,
   });
+
+  // Email modal state
+  const [emailModal, setEmailModal] = useState<{
+    isOpen: boolean;
+    pdfBytes: Uint8Array | null;
+  }>({
+    isOpen: false,
+    pdfBytes: null,
+  });
+
+  // Gmail import modal state
+  const [gmailImportModalOpen, setGmailImportModalOpen] = useState<boolean>(false);
+
+  // Toast feedback state
+  const [toast, setToast] = useState<{
+    message: string;
+    type: 'success' | 'info' | 'error';
+  } | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'info' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev));
+    }, 4500);
+  }, []);
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Global window drag & drop tracking
@@ -390,6 +418,32 @@ export default function App() {
     }
   };
 
+  // Sign document and open email modal (Gmail / Outlook)
+  const handleOpenEmailModal = async () => {
+    if (!pdfInfo || !processedSignature || placements.length === 0) return;
+
+    setIsSigning(true);
+    setErrorMessage(null);
+
+    try {
+      const signedBytes = await signPdfDocument({
+        pdfBytes: pdfInfo.bytes.slice(0),
+        signaturePngDataUrl: processedSignature.dataUrl,
+        placements,
+      });
+
+      setEmailModal({
+        isOpen: true,
+        pdfBytes: signedBytes,
+      });
+    } catch (err: any) {
+      console.error('Error signing PDF for email:', err);
+      setErrorMessage('Failed to prepare signed document for emailing. Please try again.');
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
   // Global drag & drop listeners for PDF files
   const handleGlobalDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -450,6 +504,8 @@ export default function App() {
           input?.click();
         }}
         onSignAndSave={handleSignAndSave}
+        onOpenEmailModal={handleOpenEmailModal}
+        onOpenGmailImport={() => setGmailImportModalOpen(true)}
         isSigning={isSigning}
         hasSignaturePlaced={placements.length > 0}
       />
@@ -507,6 +563,7 @@ export default function App() {
             onPdfSelected={handlePdfSelected}
             onLoadSamplePdf={handleLoadSamplePdf}
             isLoadingSample={isLoadingSample}
+            onOpenGmailImport={() => setGmailImportModalOpen(true)}
           />
         )}
 
@@ -546,7 +603,59 @@ export default function App() {
         onClose={() => setSavedSuccessModal((prev) => ({ ...prev, isOpen: false }))}
         fileName={savedSuccessModal.fileName}
         savedPdfBytes={savedSuccessModal.bytes}
+        onEmailClick={handleOpenEmailModal}
       />
+
+      {/* Email Modal (Gmail & Outlook) */}
+      <EmailModal
+        isOpen={emailModal.isOpen}
+        onClose={() => setEmailModal({ isOpen: false, pdfBytes: null })}
+        pdfBytes={emailModal.pdfBytes}
+        documentName={
+          pdfInfo
+            ? `${pdfInfo.name.replace(/\.[^/.]+$/, '')}_signed.pdf`
+            : 'document_signed.pdf'
+        }
+        onShowToast={showToast}
+      />
+
+      {/* Gmail Document Import Modal */}
+      <GmailImportModal
+        isOpen={gmailImportModalOpen}
+        onClose={() => setGmailImportModalOpen(false)}
+        onPdfSelected={(bytes, filename) => {
+          loadPdfFromBytes(bytes, filename);
+        }}
+        onShowToast={showToast}
+      />
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-50 animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <div
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl border text-xs font-semibold ${
+              toast.type === 'success'
+                ? 'bg-slate-900 text-white border-slate-800'
+                : toast.type === 'error'
+                ? 'bg-rose-600 text-white border-rose-700'
+                : 'bg-indigo-600 text-white border-indigo-700'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <Info className="w-4 h-4 text-white shrink-0" />
+            )}
+            <span>{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="ml-2 text-white/70 hover:text-white p-0.5"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

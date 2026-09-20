@@ -5,12 +5,14 @@ interface DropZoneProps {
   onPdfSelected: (file: File) => void;
   onLoadSamplePdf: () => void;
   isLoadingSample: boolean;
+  onOpenGmailImport?: () => void;
 }
 
 export const DropZone: React.FC<DropZoneProps> = ({
   onPdfSelected,
   onLoadSamplePdf,
   isLoadingSample,
+  onOpenGmailImport,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,11 +95,32 @@ export const DropZone: React.FC<DropZoneProps> = ({
               e.stopPropagation();
               fileInputRef.current?.click();
             }}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-xs transition-colors"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
           >
             <Upload className="w-4 h-4" />
             <span>Browse PDF Files</span>
           </button>
+
+          {onOpenGmailImport && (
+            <button
+              type="button"
+              id="import-from-gmail-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenGmailImport();
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-700 hover:text-red-700 text-xs font-semibold flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
+              title="Browse PDF attachments in your Gmail inbox"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path
+                  fill="#EA4335"
+                  d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"
+                />
+              </svg>
+              <span>Import from Gmail</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -107,7 +130,7 @@ export const DropZone: React.FC<DropZoneProps> = ({
               e.stopPropagation();
               onLoadSamplePdf();
             }}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 shadow-2xs transition-colors"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-indigo-500" />
             <span>{isLoadingSample ? 'Creating Sample...' : 'Try Sample Agreement'}</span>

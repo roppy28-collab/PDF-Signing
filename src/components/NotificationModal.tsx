@@ -1,11 +1,12 @@
 import React from 'react';
-import { CheckCircle2, FolderDown, X, Download } from 'lucide-react';
+import { CheckCircle2, FolderDown, X, Download, Mail } from 'lucide-react';
 
 interface NotificationModalProps {
   isOpen: boolean;
   onClose: () => void;
   fileName: string;
   savedPdfBytes: Uint8Array | null;
+  onEmailClick?: () => void;
 }
 
 export const NotificationModal: React.FC<NotificationModalProps> = ({
@@ -13,6 +14,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
   onClose,
   fileName,
   savedPdfBytes,
+  onEmailClick,
 }) => {
   if (!isOpen) return null;
 
@@ -67,22 +69,38 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
           </div>
         </div>
 
-        <div className="flex gap-2.5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-2 px-4 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-          >
-            Continue Editing
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadAgain}
-            className="py-2 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Save Another Copy</span>
-          </button>
+        <div className="space-y-2">
+          {onEmailClick && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onEmailClick();
+              }}
+              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-98"
+            >
+              <Mail className="w-4 h-4" />
+              <span>Email via Gmail or Outlook</span>
+            </button>
+          )}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Continue Editing
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadAgain}
+              className="py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Save Copy</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

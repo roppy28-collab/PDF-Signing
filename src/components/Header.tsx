@@ -8,7 +8,8 @@ import {
   Maximize2,
   FolderDown,
   RefreshCw,
-  Upload
+  Upload,
+  Mail,
 } from 'lucide-react';
 import { LoadedPdfInfo } from '../types';
 
@@ -22,6 +23,8 @@ interface HeaderProps {
   onFitWidth: () => void;
   onOpenNewPdfClick: () => void;
   onSignAndSave: () => void;
+  onOpenEmailModal: () => void;
+  onOpenGmailImport: () => void;
   isSigning: boolean;
   hasSignaturePlaced: boolean;
 }
@@ -36,6 +39,8 @@ export const Header: React.FC<HeaderProps> = ({
   onFitWidth,
   onOpenNewPdfClick,
   onSignAndSave,
+  onOpenEmailModal,
+  onOpenGmailImport,
   isSigning,
   hasSignaturePlaced,
 }) => {
@@ -68,11 +73,25 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="change-pdf-btn"
                 onClick={onOpenNewPdfClick}
-                className="text-[11px] text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 font-medium px-2 py-1 rounded transition-colors hidden sm:flex items-center gap-1"
-                title="Open another PDF"
+                className="text-[11px] text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 font-medium px-2 py-1 rounded transition-colors hidden sm:flex items-center gap-1 cursor-pointer"
+                title="Open another local PDF"
               >
                 <Upload className="w-3 h-3" />
                 Change
+              </button>
+              <button
+                id="header-gmail-import-btn"
+                onClick={onOpenGmailImport}
+                className="text-[11px] text-red-600 hover:text-red-800 hover:bg-red-50 font-medium px-2 py-1 rounded transition-colors hidden md:flex items-center gap-1 cursor-pointer"
+                title="Browse PDF attachments in Gmail"
+              >
+                <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    fill="#EA4335"
+                    d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"
+                  />
+                </svg>
+                From Gmail
               </button>
             </div>
           </>
@@ -142,36 +161,58 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* Right Side: Sign & Save to Local Folder Action */}
+      {/* Right Side: Sign & Save and Email Actions */}
       <div className="flex items-center gap-2">
         {pdfInfo && (
-          <button
-            id="sign-and-save-btn"
-            disabled={isSigning || !hasSignaturePlaced}
-            onClick={onSignAndSave}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-xs ${
-              hasSignaturePlaced && !isSigning
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer hover:shadow-sm active:scale-98 ring-2 ring-emerald-500/20'
-                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-            }`}
-            title={
-              !hasSignaturePlaced
-                ? 'Import a signature and place it on the document first'
-                : 'Sign PDF with translucent signature and save to local folder'
-            }
-          >
-            {isSigning ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Signing PDF...</span>
-              </>
-            ) : (
-              <>
-                <FolderDown className="w-4 h-4" />
-                <span>Sign & Save to Local Folder</span>
-              </>
-            )}
-          </button>
+          <>
+            <button
+              id="email-signed-pdf-btn"
+              disabled={isSigning || !hasSignaturePlaced}
+              onClick={onOpenEmailModal}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs ${
+                hasSignaturePlaced && !isSigning
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer hover:shadow-sm active:scale-98 ring-2 ring-indigo-500/20'
+                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+              }`}
+              title={
+                !hasSignaturePlaced
+                  ? 'Import a signature and place it on the document first'
+                  : 'Email signed document via Gmail or Outlook'
+              }
+            >
+              <Mail className="w-4 h-4" />
+              <span className="hidden sm:inline">Email PDF</span>
+              <span className="sm:hidden">Email</span>
+            </button>
+
+            <button
+              id="sign-and-save-btn"
+              disabled={isSigning || !hasSignaturePlaced}
+              onClick={onSignAndSave}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all shadow-xs ${
+                hasSignaturePlaced && !isSigning
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer hover:shadow-sm active:scale-98 ring-2 ring-emerald-500/20'
+                  : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+              }`}
+              title={
+                !hasSignaturePlaced
+                  ? 'Import a signature and place it on the document first'
+                  : 'Sign PDF with translucent signature and save to local folder'
+              }
+            >
+              {isSigning ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Signing PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FolderDown className="w-4 h-4" />
+                  <span>Sign & Save to Local Folder</span>
+                </>
+              )}
+            </button>
+          </>
         )}
       </div>
     </header>
