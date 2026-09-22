@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Undo2,
   BookmarkCheck,
+  PanelLeftClose,
 } from 'lucide-react';
 import { SavedSignatureData, SignatureSettings } from '../types';
 import { ProcessedSignature } from '../utils/imageProcessor';
@@ -37,6 +38,7 @@ interface SignaturePanelProps {
   onResetToSample?: () => void;
   onClearSavedDefault?: () => void;
   isSavingDefault?: boolean;
+  onHidePanel?: () => void;
 }
 
 export const SignaturePanel: React.FC<SignaturePanelProps> = ({
@@ -61,6 +63,7 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
   onResetToSample,
   onClearSavedDefault,
   isSavingDefault,
+  onHidePanel,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -105,17 +108,32 @@ export const SignaturePanel: React.FC<SignaturePanelProps> = ({
           </div>
         </div>
 
-        {rawImageSource && (
-          <button
-            type="button"
-            onClick={() => onImageSelected('')}
-            className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 font-medium p-1 hover:bg-rose-50 rounded cursor-pointer"
-            title="Clear signature"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Clear</span>
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {rawImageSource && (
+            <button
+              type="button"
+              onClick={() => onImageSelected('')}
+              className="text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 font-medium p-1 hover:bg-rose-50 rounded cursor-pointer"
+              title="Clear signature"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Clear</span>
+            </button>
+          )}
+
+          {onHidePanel && (
+            <button
+              id="hide-signature-setup-btn"
+              type="button"
+              onClick={onHidePanel}
+              className="text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 p-1.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer ml-0.5"
+              title="Hide Signature Setup"
+            >
+              <PanelLeftClose className="w-4 h-4 text-slate-500" />
+              <span className="text-[11px] font-medium hidden sm:inline">Hide</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-4 space-y-5 flex-1">

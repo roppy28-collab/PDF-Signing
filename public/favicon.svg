@@ -1,0 +1,32 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="108" fill="#4338ca"/>
+  <rect x="24" y="24" width="464" height="464" rx="90" fill="url(#grad)"/>
+  <defs>
+    <linearGradient id="grad" x1="50" y1="50" x2="460" y2="460" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#4338ca"/>
+    </linearGradient>
+    <filter id="shadow" x="80" y="80" width="352" height="370" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#1e1b4b" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Document Sheet -->
+  <g filter="url(#shadow)">
+    <path d="M128 100C128 88.9543 136.954 80 148 80H280L384 184V404C384 415.046 375.046 424 364 424H148C136.954 424 128 415.046 128 404V100Z" fill="#ffffff"/>
+    <path d="M280 80V172C280 178.627 285.373 184 292 184H384L280 80Z" fill="#e0e7ff"/>
+  </g>
+
+  <!-- Document Text Lines -->
+  <rect x="168" y="200" width="120" height="12" rx="6" fill="#cbd5e1"/>
+  <rect x="168" y="228" width="176" height="12" rx="6" fill="#e2e8f0"/>
+  <rect x="168" y="256" width="144" height="12" rx="6" fill="#e2e8f0"/>
+
+  <!-- Signature Line & Signature Flourish -->
+  <line x1="168" y1="360" x2="344" y2="360" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 8"/>
+  <path d="M172 350C190 320 210 370 230 330C245 300 250 365 270 335C290 305 315 350 340 338" stroke="#4f46e5" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Pen Icon Floating Accent -->
+  <circle cx="366" cy="336" r="38" fill="#10b981"/>
+  <path d="M352 350L380 322M352 350L350 354L354 352M352 350L358 356L386 328C388 326 388 322 386 320L382 316C380 314 376 314 374 316L352 338V350Z" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

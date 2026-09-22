@@ -226,10 +226,10 @@ export const GmailImportModal: React.FC<GmailImportModalProps> = ({
               </div>
               <div className="space-y-1">
                 <h3 className="text-sm font-bold text-slate-800">
-                  Google API Not Configured
+                  Google Services Not Configured
                 </h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Google API credentials have been removed from the application. You can upload or drag and drop any PDF file directly into the application to sign it.
+                  Google credentials are not configured in this deployment. You can upload or drag and drop any PDF file directly into the application to sign it.
                 </p>
               </div>
               <div className="pt-2 flex justify-center">

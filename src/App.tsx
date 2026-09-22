@@ -21,11 +21,53 @@ import {
   clearAllSignaturesFromLibrary,
 } from './utils/signatureStorage';
 import { PDFDocument } from 'pdf-lib';
-import { FileUp, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { FileUp, AlertCircle, CheckCircle2, Info, PanelLeftOpen } from 'lucide-react';
 import { EmailModal } from './components/EmailModal';
 import { GmailImportModal } from './components/GmailImportModal';
+import { InstallAppModal } from './components/InstallAppModal';
+import { usePWAInstall } from './hooks/usePWAInstall';
 
 export default function App() {
+  // PWA install hook state
+  const { isInstallable, isInstalled, install, hasNativePrompt } = usePWAInstall();
+  const [installModalOpen, setInstallModalOpen] = useState<boolean>(false);
+
+  // Signature panel visibility state (can be hidden/shown by user)
+  const [isSignaturePanelVisible, setIsSignaturePanelVisible] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem('pdf_signer_signature_panel_visible');
+      return stored !== null ? stored === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleSignaturePanel = useCallback(() => {
+    setIsSignaturePanelVisible((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('pdf_signer_signature_panel_visible', String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcut (Ctrl+B or Cmd+B) to toggle Signature Setup panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+          return;
+        }
+        e.preventDefault();
+        handleToggleSignaturePanel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleToggleSignaturePanel]);
+
   // PDF state
   const [pdfInfo, setPdfInfo] = useState<LoadedPdfInfo | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -665,8 +707,12 @@ export default function App() {
         onSignAndSave={handleSignAndSave}
         onOpenEmailModal={handleOpenEmailModal}
         onOpenGmailImport={() => setGmailImportModalOpen(true)}
+        onOpenInstallModal={() => setInstallModalOpen(true)}
+        isAppInstalled={isInstalled}
         isSigning={isSigning}
         hasSignaturePlaced={placements.length > 0}
+        isSignaturePanelVisible={isSignaturePanelVisible}
+        onToggleSignaturePanel={handleToggleSignaturePanel}
       />
 
       {/* Error alert if any */}
@@ -688,29 +734,56 @@ export default function App() {
       {/* Main Workspace */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* Left Side: JPG Signature and Translucency Settings */}
-        <SignaturePanel
-          rawImageSource={rawImageSource ? (typeof rawImageSource === 'string' ? rawImageSource : URL.createObjectURL(rawImageSource)) : null}
-          processedSignature={processedSignature}
-          settings={settings}
-          onSettingsChange={setSettings}
-          onImageSelected={handleImageSelected}
-          onAddSignatureToPage={handleAddSignatureToPage}
-          hasPdfLoaded={!!pdfInfo}
-          isProcessing={isProcessingSignature}
-          savedSignatures={savedSignatures}
-          activeSignatureId={activeSignatureId}
-          onSelectSavedSignature={handleSelectSavedSignature}
-          onSaveCurrentToLibrary={handleSaveCurrentToLibrary}
-          onDeleteSavedSignature={handleDeleteSavedSignature}
-          onSetDefaultSignature={handleSetDefaultSignature}
-          onRenameSavedSignature={handleRenameSavedSignature}
-          onAddPresetSignature={handleAddPresetSignature}
-          onEmptyLibrary={handleEmptyLibrary}
-          savedDefaultInfo={savedDefaultInfo}
-          onResetToSample={handleResetToSample}
-          onClearSavedDefault={handleClearSavedDefault}
-          isSavingDefault={isSavingDefault}
-        />
+        {isSignaturePanelVisible && (
+          <SignaturePanel
+            rawImageSource={rawImageSource ? (typeof rawImageSource === 'string' ? rawImageSource : URL.createObjectURL(rawImageSource)) : null}
+            processedSignature={processedSignature}
+            settings={settings}
+            onSettingsChange={setSettings}
+            onImageSelected={handleImageSelected}
+            onAddSignatureToPage={handleAddSignatureToPage}
+            hasPdfLoaded={!!pdfInfo}
+            isProcessing={isProcessingSignature}
+            savedSignatures={savedSignatures}
+            activeSignatureId={activeSignatureId}
+            onSelectSavedSignature={handleSelectSavedSignature}
+            onSaveCurrentToLibrary={handleSaveCurrentToLibrary}
+            onDeleteSavedSignature={handleDeleteSavedSignature}
+            onSetDefaultSignature={handleSetDefaultSignature}
+            onRenameSavedSignature={handleRenameSavedSignature}
+            onAddPresetSignature={handleAddPresetSignature}
+            onEmptyLibrary={handleEmptyLibrary}
+            savedDefaultInfo={savedDefaultInfo}
+            onResetToSample={handleResetToSample}
+            onClearSavedDefault={handleClearSavedDefault}
+            isSavingDefault={isSavingDefault}
+            onHidePanel={() => {
+              setIsSignaturePanelVisible(false);
+              try {
+                localStorage.setItem('pdf_signer_signature_panel_visible', 'false');
+              } catch {}
+            }}
+          />
+        )}
+
+        {/* Floating Reopen Button when Signature Setup is hidden */}
+        {!isSignaturePanelVisible && (
+          <button
+            id="floating-show-signature-setup-btn"
+            type="button"
+            onClick={() => {
+              setIsSignaturePanelVisible(true);
+              try {
+                localStorage.setItem('pdf_signer_signature_panel_visible', 'true');
+              } catch {}
+            }}
+            className="absolute left-3 top-3 z-30 flex items-center gap-2 px-3 py-2 bg-white/95 hover:bg-white text-slate-700 hover:text-indigo-600 rounded-xl shadow-md border border-slate-200/90 text-xs font-semibold backdrop-blur-xs transition-all cursor-pointer active:scale-95 group hover:border-indigo-300 hover:shadow-lg"
+            title="Show Signature Setup (Ctrl+B)"
+          >
+            <PanelLeftOpen className="w-4 h-4 text-indigo-600 group-hover:scale-110 transition-transform" />
+            <span className="hidden sm:inline">Signature Setup</span>
+          </button>
+        )}
 
         {/* Center / Right: PDF Document Area or Drop Zone */}
         {pdfInfo ? (
@@ -795,6 +868,15 @@ export default function App() {
           loadPdfFromBytes(bytes, filename);
         }}
         onShowToast={showToast}
+      />
+
+      {/* PWA Install Modal */}
+      <InstallAppModal
+        isOpen={installModalOpen}
+        onClose={() => setInstallModalOpen(false)}
+        hasNativePrompt={hasNativePrompt}
+        onNativeInstall={install}
+        isInstalled={isInstalled}
       />
 
       {/* Toast Notification */}
